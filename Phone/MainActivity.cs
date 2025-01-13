@@ -14,9 +14,13 @@ namespace Phone
             // Проверка разрешений
             if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.M)
             {
-                if (CheckSelfPermission(Android.Manifest.Permission.ReadCallLog) != Android.Content.PM.Permission.Granted)
+                if (CheckSelfPermission(Android.Manifest.Permission.ReadCallLog) != Android.Content.PM.Permission.Granted || CheckSelfPermission(Android.Manifest.Permission.ReadContacts) != Android.Content.PM.Permission.Granted)
                 {
-                    RequestPermissions(new[] { Android.Manifest.Permission.ReadCallLog }, 1);
+                    RequestPermissions(new[] 
+                    { 
+                        Android.Manifest.Permission.ReadCallLog,
+                        Android.Manifest.Permission.ReadContacts
+                    }, 1);
                 }
             }
 
@@ -27,7 +31,7 @@ namespace Phone
             // Отображение данных в ListView
             ListView callLogList = FindViewById<ListView>(Resource.Id.callLogList);
             var callLogStrings = callLogs.Select(log =>
-                $"Номер: {log.PhoneNumber}\nТип: {log.CallType}\nДата: {log.CallDate}\nДлительность: {log.CallDuration} сек"
+                $"Имя: {log.SubscribersName}\nНомер: {log.PhoneNumber}\nТип: {log.CallType}\nДата: {log.CallDate}\nДлительность: {log.CallDuration} сек"
             ).ToList();
 
             ArrayAdapter adapter = new ArrayAdapter(this, Android.Resource.Layout.SimpleListItem1, callLogStrings);

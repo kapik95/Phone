@@ -1,7 +1,9 @@
 ﻿using Android.Content;
 using Android.Database;
 using Android.Provider;
+using Android.Net;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 public class CallLogHelper
 {
@@ -34,12 +36,14 @@ public class CallLogHelper
             do 
             {
                 string number = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Number));
+                string name = GetContactName(number) ?? number; 
                 string type = GetCallType(cursor.GetInt(cursor.GetColumnIndex(CallLog.Calls.Type)));
                 string date = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Date));
                 string duration = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Duration));
 
                 callLogs.Add(new CallLogItem
                 {
+                    SubscribersName = name,
                     PhoneNumber = number,
                     CallType = type,
                     CallDate = date,
@@ -51,6 +55,28 @@ public class CallLogHelper
         }
 
         return callLogs;
+    }
+
+    private string GetContactName(string phoneNumber)
+    {
+        var uri = Android.Net.Uri.WithAppendedPath(ContactsContract.PhoneLookup.ContentFilterUri, Android.Net.Uri.Encode(phoneNumber));
+        string[] projection = { ContactsContract.PhoneLookup.InterfaceConsts.DisplayName };
+
+        ICursor cursor = _contentResolver.Query(uri, projection, null, null, null);
+
+        if (cursor != null)
+        {
+            if (cursor.MoveToFirst())
+            {
+                string name = cursor.GetString(cursor.GetColumnIndex(projection[0]));
+                cursor.Close();
+                return name;
+            }
+
+            cursor.Close();
+        }
+
+        return null; 
     }
 
     // Метод для преобразования типа вызова в текстовое описание
