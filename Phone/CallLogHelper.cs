@@ -8,6 +8,9 @@ using System.Runtime.CompilerServices;
 public class CallLogHelper
 {
     private readonly ContentResolver _contentResolver;
+    //Для ограничения кол-ва записей
+    private int _count = 0;
+    private const  int MAX_NUMBER_RECORDS = 25;
 
     public CallLogHelper(ContentResolver contentResolver)
     {
@@ -25,7 +28,6 @@ public class CallLogHelper
             CallLog.Calls.Type,     // Тип вызова
             CallLog.Calls.Date,     // Дата вызова
             CallLog.Calls.Duration  // Длительность вызова
-
         };
 
         // Запрос данных
@@ -35,6 +37,8 @@ public class CallLogHelper
         {
             do 
             {
+                if (_count >= MAX_NUMBER_RECORDS) break;
+
                 string number = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Number));
                 string name = GetContactName(number) ?? number; 
                 string type = GetCallType(cursor.GetInt(cursor.GetColumnIndex(CallLog.Calls.Type)));
@@ -49,6 +53,8 @@ public class CallLogHelper
                     CallDate = date,
                     CallDuration = duration
                 });
+
+                _count++;
             } while (cursor.MoveToNext());
 
             cursor.Close();
