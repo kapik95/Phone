@@ -3,13 +3,10 @@ namespace Phone
     [Activity(Label = "@string/app_name", Theme = "@android:style/Theme.Material.Light.NoActionBar", MainLauncher = true)]
     public class MainActivity : Activity
     {
-        protected override void OnCreate(Bundle? savedInstanceState)
+        protected override async void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-
-            // Set our view from the "main" layout resource
             SetContentView(Resource.Layout.activity_main);
-
 
             // Проверка разрешений
             if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.M)
@@ -26,16 +23,13 @@ namespace Phone
 
             // Получение данных журнала вызовов
             var callLogHelper = new CallLogHelper(ContentResolver);
-            var callLogs = callLogHelper.GetCallLogs();
+            var callLogs = await Task.Run(() => callLogHelper.GetCallLogs());
 
-            // Отображение данных в ListView
-            ListView callLogList = FindViewById<ListView>(Resource.Id.callLogList);
-            var callLogStrings = callLogs.Select(log =>
-                $"Имя: {log.SubscribersName}\nНомер: {log.PhoneNumber}\nТип: {log.CallType}\nДата: {log.CallDate}\nДлительность: {log.CallDuration} сек"
-            ).ToList();
 
-            ArrayAdapter adapter = new ArrayAdapter(this, Android.Resource.Layout.SimpleListItem1, callLogStrings);
-            callLogList.Adapter = adapter;
+            var recyclerView = FindViewById<AndroidX.RecyclerView.Widget.RecyclerView>(Resource.Id.recyclerView);
+            recyclerView.SetLayoutManager(new AndroidX.RecyclerView.Widget.LinearLayoutManager(this));
+            var adapter = new CallLogAdapter(callLogs, this);
+            recyclerView.SetAdapter(adapter);
         }
     }
 }

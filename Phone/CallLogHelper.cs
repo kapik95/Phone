@@ -4,6 +4,7 @@ using Android.Provider;
 using Android.Net;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using Android.Telecom;
 
 public class CallLogHelper
 {
@@ -27,7 +28,8 @@ public class CallLogHelper
             CallLog.Calls.Number,   // Номер телефона
             CallLog.Calls.Type,     // Тип вызова
             CallLog.Calls.Date,     // Дата вызова
-            CallLog.Calls.Duration  // Длительность вызова
+            CallLog.Calls.Duration,  // Длительность вызова
+
         };
 
         // Запрос данных
@@ -40,17 +42,19 @@ public class CallLogHelper
                 if (_count >= MAX_NUMBER_RECORDS) break;
 
                 string number = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Number));
-                string name = GetContactName(number) ?? number; 
+                var (name, photo) = GetContactDetalis(number);
                 string type = GetCallType(cursor.GetInt(cursor.GetColumnIndex(CallLog.Calls.Type)));
-                string date = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Date));
+                var date = cursor.GetLong(cursor.GetColumnIndex(CallLog.Calls.Date));
                 string duration = cursor.GetString(cursor.GetColumnIndex(CallLog.Calls.Duration));
+
 
                 callLogs.Add(new CallLogItem
                 {
                     SubscribersName = name,
                     PhoneNumber = number,
+                    Photo = photo,
                     CallType = type,
-                    CallDate = date,
+                    CallDate = DateTimeOffset.FromUnixTimeMilliseconds(date).ToString("g"),
                     CallDuration = duration
                 });
 
@@ -63,26 +67,50 @@ public class CallLogHelper
         return callLogs;
     }
 
-    private string GetContactName(string phoneNumber)
+    private (string Name, byte[] Photo) GetContactDetalis(string number)
     {
-        var uri = Android.Net.Uri.WithAppendedPath(ContactsContract.PhoneLookup.ContentFilterUri, Android.Net.Uri.Encode(phoneNumber));
-        string[] projection = { ContactsContract.PhoneLookup.InterfaceConsts.DisplayName };
+        var uri = Android.Net.Uri.WithAppendedPath(ContactsContract.PhoneLookup.ContentFilterUri, Android.Net.Uri.Encode(number));
+        string[] projection = {
+            ContactsContract.PhoneLookup.InterfaceConsts.DisplayName,
+            ContactsContract.PhoneLookup.InterfaceConsts.PhotoUri
+        };
 
-        ICursor cursor = _contentResolver.Query(uri, projection, null, null, null);
+        ICursor cursor = _contentResolver.Query(uri, projection, null, null);
 
-        if (cursor != null)
+        string name = "Неизвестный";
+        byte[] photo = null;
+
+        if (cursor != null && cursor.MoveToFirst())
         {
-            if (cursor.MoveToFirst())
-            {
-                string name = cursor.GetString(cursor.GetColumnIndex(projection[0]));
-                cursor.Close();
-                return name;
-            }
+            name = cursor.GetString(cursor.GetColumnIndex(projection[0]));
 
+            string photoUri = cursor.GetString(cursor.GetColumnIndex(projection[1]));
+
+            if (!string.IsNullOrEmpty(photoUri)) 
+            {
+                try
+                {
+                    using (var inputStream = _contentResolver.OpenInputStream(Android.Net.Uri.Parse(photoUri)))
+                    {
+                        if (inputStream != null)
+                        {
+                            using (var memoryStream = new System.IO.MemoryStream())
+                            {
+                                inputStream.CopyTo(memoryStream);
+                                photo = memoryStream.ToArray();
+                            }
+                        }
+                    }
+                }
+                catch (Java.IO.FileNotFoundException)
+                {
+
+                }
+            }
             cursor.Close();
         }
-
-        return null; 
+        cursor?.Close();
+        return (name, photo); // Возвращаем имя и фото
     }
 
     // Метод для преобразования типа вызова в текстовое описание
